@@ -1,0 +1,53 @@
+name: r-4.3
+channels:
+  - conda-forge
+  - r
+dependencies:
+  - r=4.3=r43hd8ed1ab_1007
+  - r-irkernel=1.3.2=r43h785f33e_1
+  - ca-certificates=2023.7.22=hbcca054_0
+  - openssl=3.1.4=hd590300_0
+  - r-terra=1.7_55=r43h25a7ac2_0
+  - r-rgdal=1.6_7=r43haac4566_0
+  - r-rnetcdf=2.6_2=r43h3183d2a_4
+  - r-ggplot2=3.4.4=r43hc72bb7e_0
+  - r-lubridate=1.9.3=r43h57805ef_0
+  - r-randomforest=4.7_1.1=r43h61816a4_2
+  - r-rgooglemaps=1.5.1=r43hc72bb7e_0
+  - r-lava=1.7.3=r43hc72bb7e_0
+  - r-beanplot=1.3.1=r43ha770c72_2
+  - r-cdft=1.2=r43hc72bb7e_2
+  - r-corrplot=0.92=r43hc72bb7e_2
+  - r-dt=0.28=r43hc72bb7e_1
+  - r-ellipse=0.5.0=r43hc72bb7e_0
+  - r-energy=1.7_11=r43ha503ecb_1
+  - r-fields=15.2=r43h61816a4_0
+  - r-fitdistrplus=1.1_11=r43hc72bb7e_1
+  - r-moments=0.14.1=r43hc72bb7e_2
+  - r-pcict=0.5_4.4=r43h57805ef_1
+  - r-proj=0.4.0=r43h57805ef_2
+  - r-prroc=1.3.1=r43hc72bb7e_1005
+  - r-pscl=1.5.5.1=r43hd590300_1
+  - r-qgraph=1.9.8=r43ha503ecb_0
+  - r-quantreg=5.97=r43hd9ac46e_0
+  - r-roxygen2=7.2.3=r43ha503ecb_1
+  - r-udunits2=0.13.2.1=r43h57805ef_3
+  - r-zoo=1.8_12=r43h57805ef_1
+  - r-clipr=0.8.0=r43hc72bb7e_2
+  - r-readr=2.1.4=r43ha503ecb_1
+  - r-curl=5.1.0=r43hf9611b0_0
+  - r-lmoments=1.3_1=r43h7ce84a7_5
+  - r-statmod=1.5.0=r43hd8f1df9_1
+  - r-zip=2.3.0=r43h57805ef_1
+  - r-distillery=1.2_1=r43h785f33e_2
+  - r-nloptr=2.0.3=r43hcf54a89_2
+  - r-extremes=2.1_3=r43h1df0287_1
+  - r-climate4r.climdex=0.2.3=r43ha770c72_0
+  - r-climate4r.datasets=0.0.1=r43ha770c72_2
+  - r-climate4r.indices=0.3.1=r43ha770c72_0
+# These 2 packages contain vulnerabilities
+#  - r-climate4r.udg
+#  - r-climate4r.value
+  - r-s2dv=2.0.0=r43hc72bb7e_0
+  - jupyter_client=8.6.0=pyhd8ed1ab_0
+  - r-dataretrieval=2.7.14=r43h785f33e_0
