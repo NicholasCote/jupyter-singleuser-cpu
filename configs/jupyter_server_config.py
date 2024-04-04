@@ -67,4 +67,4 @@ c.MultiKernelManager.default_kernel_name = 'conda-env-cisl-cloud-base-py'
 
 # Configure nb_conda_kernels to avoid registering jupyter kernels in our conda
 # environment again.
-c.CondaKernelSpecManager.env_filter = f'.*/opt/conda/*'
+c.CondaKernelSpecManager.env_filter = f'.*/srv/conda/*'

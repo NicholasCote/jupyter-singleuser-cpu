@@ -7,7 +7,7 @@ channels:
   - r
 # ~/ is on persistent storage, where / gets wiped out and does not allow for persistent envs. 
 envs_dirs:
-  - /srv/conda
+  - /srv/base-conda
   - /home/jovyan/my-conda-envs/
 # # env_prompt (str)
 # #   Template for prompt modification based on the active environment.

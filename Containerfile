@@ -17,11 +17,12 @@ ENV CONDA_ENV=cisl-cloud-base \
     LANG=C.UTF-8  \
     LC_ALL=C.UTF-8 \
     # Install conda in the same place repo2docker does
-    CONDA_DIR=/srv/conda
+    CONDA_DIR=/srv/conda \
+    CONDA_USR_DIR=/srv/base-conda 
 
 # All env vars that reference other env vars need to be in their own ENV block
 # Path to the python environment where the jupyter notebook packages are installed
-ENV NB_PYTHON_PREFIX=${CONDA_DIR}/envs/${CONDA_ENV} \
+ENV NB_PYTHON_PREFIX=${CONDA_USR_DIR}/envs/${CONDA_ENV} \
     # Home directory of our non-root user
     HOME=/home/${NB_USER}
 
@@ -34,7 +35,7 @@ ENV PATH=${NB_PYTHON_PREFIX}/bin:${CONDA_DIR}/bin:${PATH}
 # Ask dask to read config from ${CONDA_DIR}/etc rather than
 # the default of /etc, since the non-root jovyan user can write
 # to ${CONDA_DIR}/etc but not to /etc
-ENV DASK_ROOT_CONFIG=${CONDA_DIR}/etc
+ENV DASK_ROOT_CONFIG=${CONDA_USR_DIR}/etc
 
 COPY packages/apt.txt apt.txt
 
@@ -60,9 +61,12 @@ RUN echo "auth requisite pam_deny.so" >> /etc/pam.d/su && \
     sed -i.bak -e 's/^%sudo/#%sudo/' /etc/sudoers && \
     useradd --no-log-init --create-home --shell /bin/bash --uid "${NB_UID}" --no-user-group "${NB_USER}" && \
     mkdir -p "${CONDA_DIR}" && \
+    mkdir -p "${CONDA_USR_DIR}" && \
     chown "${NB_USER}:${NB_GID}" "${CONDA_DIR}" && \
+    chown "${NB_USER}:${NB_GID}" "${CONDA_USR_DIR}" && \
     chmod g+w /etc/passwd && \
     fix-permissions "${CONDA_DIR}" && \
+    fix-permissions "${CONDA_USR_DIR}" && \
     fix-permissions "/home/${NB_USER}"
 
 # Add TZ configuration - https://github.com/PrefectHQ/prefect/issues/3061
@@ -75,30 +79,32 @@ RUN echo "Installing Mambaforge..." \
     && wget --quiet ${URL} -O installer.sh \
     && /bin/bash installer.sh -u -b -p ${CONDA_DIR} \
     && rm installer.sh \
-    && mamba install conda-lock jupyterhub notebook r-irkernel conda-forge::nb_conda_kernels -y \
+    && mamba install conda-lock jupyterhub==4.0.1 notebook r-irkernel conda-forge::nb_conda_kernels -y \
     && mamba clean -afy \
     # After installing the packages, we cleanup some unnecessary files
     # to try reduce image size - see https://jcristharif.com/conda-docker-tips.html
     # Although we explicitly do *not* delete .pyc files, as that seems to slow down startup
     # quite a bit unfortunately - see https://github.com/2i2c-org/infrastructure/issues/2047
-    && find ${CONDA_DIR} -follow -type f -name '*.a' -delete 
+    && find ${CONDA_DIR} -follow -type f -name '*.a' -delete \
     # Fix permissions
-    #&& fix-permissions "${CONDA_DIR}" \
-    #&& fix-permissions "/home/${NB_USER}"
+    && fix-permissions "${CONDA_DIR}" \
+    && fix-permissions "/home/${NB_USER}"
 
 WORKDIR /tmp
 
-COPY packages/requirements.txt packages/cisl-cloud-base.yml packages/npl-2023b.yml packages/r-4.3.yml .
+COPY packages/requirements.txt packages/cisl-cloud-base.yml packages/npl-2023b.yml packages/r-4.3.yml /tmp/
+
+RUN ${CONDA_DIR}/bin/pip install --no-cache -r requirements.txt
+
+COPY --chown="${NB_UID}:${NB_GID}" configs/.condarc "${CONDA_DIR}/.condarc"
 
 RUN mamba env create --name ${CONDA_ENV} -f cisl-cloud-base.yml \
     && mamba env create -f npl-2023b.yml \
     && mamba env create -f r-4.3.yml \
-    && mamba clean -afy 
+    && mamba clean -afy \
     # Fix permissions
-    #&& fix-permissions "${CONDA_DIR}" \
-    #&& fix-permissions "/home/${NB_USER}"
-
-RUN ${NB_PYTHON_PREFIX}/bin/pip install --no-cache -r requirements.txt
+    && fix-permissions "${CONDA_DIR}" \
+    && fix-permissions "/home/${NB_USER}"
 
 # Run conda activate each time a bash shell starts, so users don't have to manually type conda activate
 # Note this is only read by shell, but not by the jupyter notebook - that relies
@@ -151,14 +157,17 @@ RUN julia -e 'import Pkg; Pkg.update()' && \
     rm -rf "${HOME}/.local"
     #fix-permissions "${JULIA_PKGDIR}" "${CONDA_DIR}/share/jupyter"
 
-COPY scripts/jupyter_server_config.py /etc/jupyter/jupyter_server_config.py
+COPY configs/jupyter_server_config.py /etc/jupyter/jupyter_server_config.py
 # Used to allow user deletions of folders and contents
 RUN sed -i 's/c.FileContentsManager.delete_to_trash = False/c.FileContentsManager.always_delete_dir = True/g' /etc/jupyter/jupyter_server_config.py
 
-###
-# Change the .condarc file now so user envs are created in ~/my-conda-envs
-###
-COPY .condarc /srv/conda/
+# Make the conda environments we install read only and executable for the user
+# They can run the environments but will get permission denied when trying to make changes
+# New environments are installed to /home/jovyan/.jupyter with write permissions for the users
+RUN chmod 755 /srv/base-conda/cisl-cloud-base/* && \
+    chmod 755 /srv/base-conda/npl-2023b/* && \
+    chmod 755 /srv/base-conda/r-4.3/* && \
+    chown root:root /srv/*   
 
 USER ${NB_USER}
 WORKDIR ${HOME}
