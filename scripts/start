@@ -10,3 +10,5 @@ fi
 # ==== ONLY EDIT WITHIN THIS BLOCK =====
 
 exec "$@"
+
+source /etc/profile.d/init_conda.sh
