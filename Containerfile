@@ -30,7 +30,7 @@ ENV NB_PYTHON_PREFIX=${CONDA_USR_DIR}/envs/${CONDA_ENV} \
 # Thus, when we start a `python` process (for kernels, or notebooks, etc),
 # it loads the python in the notebook conda environment, as that comes
 # first here.
-ENV PATH=${NB_PYTHON_PREFIX}/bin:${CONDA_DIR}/bin:${PATH}
+ENV PATH=${CONDA_DIR}/bin:${NB_PYTHON_PREFIX}/bin:${PATH}
 
 # Ask dask to read config from ${CONDA_DIR}/etc rather than
 # the default of /etc, since the non-root jovyan user can write
@@ -92,7 +92,7 @@ RUN echo "Installing Mambaforge..." \
 
 WORKDIR /tmp
 
-COPY packages/requirements.txt packages/cisl-cloud-base.yml packages/npl-2023b.yml packages/r-4.3.yml /tmp/
+COPY packages/requirements.txt packages/cisl-cloud-base.yml packages/npl-2023b.yml packages/npl-2024a.yml packages/r-4.3.yml /tmp/
 
 RUN ${CONDA_DIR}/bin/pip install --no-cache -r requirements.txt
 
@@ -100,6 +100,7 @@ COPY --chown="${NB_UID}:${NB_GID}" configs/.condarc "${CONDA_DIR}/.condarc"
 
 RUN mamba env create --name ${CONDA_ENV} -f cisl-cloud-base.yml \
     && mamba env create -f npl-2023b.yml \
+    && mamba env create -f npl-2024a.yml \
     && mamba env create -f r-4.3.yml \
     && mamba clean -afy \
     # Fix permissions
@@ -166,6 +167,7 @@ RUN sed -i 's/c.FileContentsManager.delete_to_trash = False/c.FileContentsManage
 # New environments are installed to /home/jovyan/.jupyter with write permissions for the users
 RUN chmod 755 /srv/base-conda/cisl-cloud-base/* && \
     chmod 755 /srv/base-conda/npl-2023b/* && \
+    chmod 755 /srv/base-conda/npl-2024a/* && \
     chmod 755 /srv/base-conda/r-4.3/* && \
     chown root:root /srv/*   
 
