@@ -2,6 +2,10 @@
 FROM ubuntu:22.04
 # build file for pangeo images
 
+# Fix: https://github.com/hadolint/hadolint/wiki/DL4006
+# Fix: https://github.com/koalaman/shellcheck/wiki/SC3014
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
 # Setup environment to match variables set by repo2docker as much as possible
 # The name of the conda environment into which the requested packages are installed
 ENV CONDA_ENV=cisl-cloud-base \
@@ -10,7 +14,7 @@ ENV CONDA_ENV=cisl-cloud-base \
     # Set username, uid and gid (same as uid) of non-root user the container will be run as
     NB_USER=jovyan \
     NB_UID=1000 \
-    NB_GID=100 \
+    NB_GID=1000 \
     # Use /bin/bash as shell, not the default /bin/sh (arrow keys, etc don't work then)
     SHELL=/bin/bash \
     # Setup locale to be UTF-8, avoiding gnarly hard to debug encoding errors
@@ -54,17 +58,28 @@ COPY scripts/fix-permissions /usr/local/bin/fix-permissions
 
 RUN chmod a+rx /usr/local/bin/fix-permissions
 
+# Enable prompt color in the skeleton .bashrc before creating the default NB_USER
+# hadolint ignore=SC2016
+RUN sed -i 's/^#force_color_prompt=yes/force_color_prompt=yes/' /etc/skel/.bashrc && \
+    # More information in: https://github.com/jupyter/docker-stacks/pull/2047
+    # and docs: https://docs.conda.io/projects/conda/en/latest/dev-guide/deep-dives/activation.html
+    echo 'eval "$(conda shell.bash hook)"' >> /etc/skel/.bashrc
+
 # Create NB_USER with name jovyan user with UID=1000 and in the 'users' group
 # and make sure these dirs are writable by the `users` group.
-RUN echo "auth requisite pam_deny.so" >> /etc/pam.d/su && \
-    sed -i.bak -e 's/^%admin/#%admin/' /etc/sudoers && \
-    sed -i.bak -e 's/^%sudo/#%sudo/' /etc/sudoers && \
-    useradd --no-log-init --create-home --shell /bin/bash --uid "${NB_UID}" --no-user-group "${NB_USER}" && \
-    mkdir -p "${CONDA_DIR}" && \
+RUN echo "Creating ${NB_USER} user..." \
+    # Create a group for the user to be part of, with gid same as uid
+    && groupadd --gid ${NB_UID} ${NB_USER}  \
+    # Create non-root user, with given gid, uid and create $HOME
+    && useradd --create-home --gid ${NB_UID} --no-log-init --uid ${NB_UID} ${NB_USER} \
+    # Make sure that /srv is owned by non-root user, so we can install things there
+    && chown -R ${NB_USER}:${NB_USER} /srv
+
+RUN mkdir -p "${CONDA_DIR}" && \
     mkdir -p "${CONDA_USR_DIR}" && \
-    chown "${NB_USER}:${NB_GID}" "${CONDA_DIR}" && \
-    chown "${NB_USER}:${NB_GID}" "${CONDA_USR_DIR}" && \
-    chmod g+w /etc/passwd && \
+    #chown "${NB_USER}:${NB_UID}" "${CONDA_DIR}" && \
+    #chown "${NB_USER}:${NB_UID}" "${CONDA_USR_DIR}" && \
+    #chmod g+w /etc/passwd && \
     fix-permissions "${CONDA_DIR}" && \
     fix-permissions "${CONDA_USR_DIR}" && \
     fix-permissions "/home/${NB_USER}"
@@ -88,6 +103,7 @@ RUN echo "Installing Mambaforge..." \
     && find ${CONDA_DIR} -follow -type f -name '*.a' -delete \
     # Fix permissions
     && fix-permissions "${CONDA_DIR}" \
+    && fix-permissions "${CONDA_USR_DIR}" \
     && fix-permissions "/home/${NB_USER}"
 
 WORKDIR /tmp
@@ -105,6 +121,7 @@ RUN mamba env create --name ${CONDA_ENV} -f cisl-cloud-base.yml \
     && mamba clean -afy \
     # Fix permissions
     && fix-permissions "${CONDA_DIR}" \
+    && fix-permissions "${CONDA_USR_DIR}" \
     && fix-permissions "/home/${NB_USER}"
 
 # Run conda activate each time a bash shell starts, so users don't have to manually type conda activate
